@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>地区列表</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript">
+	Ext.onReady(function() {
+		var rootStore = Ext.create('Ext.data.TreeStore', {
+			proxy : {
+				type : 'ajax',
+				url : getServerHttp() + "/cp/area/area_data.htm",
+				reader : {
+					type : 'json',
+				},
+				extraParams : {
+					deep : 1,
+					parent_id : 0
+				},
+			},
+			listeners : {
+				'nodebeforeexpand' : function(node, eOpts) {
+					//点击父亲节点的菜单会将节点的id通过ajax请求，将到后台  
+					//console.log(node);
+					if (node.data.text == "区域") {
+						this.proxy.extraParams.parent_id = 0;
+						this.proxy.extraParams.deep = 1;
+					} else {
+						this.proxy.extraParams.parent_id = node.data.kid;
+						this.proxy.extraParams.deep = node.raw.area_deep + 1;
+					}
+				},
+
+			}
+		});
+
+		var rootPanel = Ext.create("Ext.tree.Panel", {
+			title : '区域列表',
+			width : 300,
+			//height:300,  
+			collapsible : true,
+			singleExpand : false,
+			useArrows : true,
+			root : {
+				id : 1,
+				text : "区域",
+				expanded : true
+
+			},
+			rootVisible : false,
+			store : rootStore,
+			renderTo : Ext.getBody()
+
+		});
+
+	});
+</script>
+</head>
+<body>
+
+</body>
+</html>

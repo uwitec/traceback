@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>企业管理</title>
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript" src="../../resource/js/jquery.js"></script>
+<link rel="stylesheet" type="text/css" href="../../resource/webuploader/webuploader.css">
+<script type="text/javascript" src="../../resource/webuploader/webuploader.min.js"></script>
+<script type="text/javascript" src="main_file_id.js?v=3"></script>
+
+<script type="text/javascript">
+	//设置ComboBox列表数据源参数
+	var comboxStore = Ext.create('Ext.data.Store', {
+		fields : [ 'name', 'kid' ],
+		remoteSort : true,
+		autoLoad : true,
+		pageSize : 50,
+		sorters : {
+			property : 'name',
+			direction : 'ASC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp()+"/cp/shop/menu/list_data.htm",
+			reader : {
+				type : 'json',
+				root : 'list',
+				totalProperty : 'page.rowTotal'
+			}
+		}
+	}); //#comboxStore
+
+	var dataStore = Ext.create('Ext.data.Store', {
+		fields : [ 'name' ],
+		remoteSort : true,
+		autoLoad : true,
+		pageSize : 15,
+		sorters : {
+			property : 'created',
+			direction : 'DESC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp() + "/cp/shop/list_data.htm",
+			reader : {
+				type : 'json',
+				root : 'list',
+				totalProperty : 'page.totalRow' 
+			}
+		},
+		listeners : {
+			'beforeload' : function(store, op, options) {
+				var params = searchFormPanel.getForm().getValues();
+				Ext.apply(dataStore.proxy.extraParams, params);
+			}
+		} 
+	}); //#dataStore 
+
+	var searchFormPanel = Ext.create('Ext.form.Panel', {
+		frame : true,
+		title : "搜索条件",
+		style : {marginBottom : '5px'},
+		bodyStyle : {padding: '10px'},
+		buttonAlign : "center",
+		collapsible : true,
+		defaultType : "textfield",
+		items : [ {
+			xtype : "container",
+			layout : "hbox",
+			items : [ {
+				xtype : "textfield",
+				fieldLabel : "名称",
+				name : "srh.name"
+			} ]
+		} ],
+		buttons : [ {
+			text : "搜索",
+			icon : jcapp.getIcon("magnifier.png"),
+			handler : function() {
+				dataStore.load({
+				//params:params()
+				});
+				dataStore.sync();
+			}
+		}, {
+			text : "重置",
+			icon : jcapp.getIcon("arrow_refresh.png"),
+			handler : function() {
+				this.up('form').getForm().reset();
+				dataStore.load({});
+				dataStore.sync();
+			}
+		} ]
+	}); //#searchFormPanel
+	var listGridPanel = Ext.create('Ext.grid.Panel', {
+		title : '企业列表',
+		tbar : [ {
+			text : '新增',
+			xtype : 'button',
+			icon : jcapp.getIcon("add.png"),
+			handler : function() {
+				myAdd();
+			}
+		} ],
+		dockedItems : [ {
+			xtype : 'pagingtoolbar',
+			store : dataStore, // same store GridPanel is using
+			dock : 'bottom',
+			displayInfo : true,
+			//buttons : [ {
+			//	text : "更新",
+			//	formBind : false, // only enabled once the form is valid
+			//	handler : function() {
+			//		myUpdate();
+			//	}
+			//}]
+		} ],
+		store : dataStore,
+		viewConfig:{  
+            enableTextSelection:true  
+        },
+		columns : [{
+			text : '企业类型',
+			dataIndex : 'type',
+			flex : 1
+		}, {
+			text : '企业名称',
+			dataIndex : 'name',
+			flex : 1
+		}, {
+			text : '负责人',
+			dataIndex : 'link_man',
+			flex : 1
+		}, {
+			text : '手机号码',
+			dataIndex : 'link_mobile',
+			flex : 1
+		}, {
+			text : '所属的地方管理局',
+			dataIndex : 'address',
+			flex : 1
+		},
+		{
+			xtype : "actioncolumn",
+			align : "center",
+			text : '操作',
+			items : [ {
+				xtype : 'button',
+				tooltip : '编辑',
+				icon : jcapp.getIcon("application_form_edit.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					//alert("编辑 " + rec.get('kid'));
+					myEdit(rec.get('kid'));
+				}
+			}, {
+				xtype : "container"
+			}, {
+				xtype : 'button',
+				tooltip : '删除',
+				icon : jcapp.getIcon("cross.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					myDel(rec.get('kid'));
+				}
+			} ]
+
+		} ]
+	}); //#listGridPanel
+	Ext.onReady(function() {
+		searchFormPanel.render(Ext.getBody());
+		listGridPanel.render(Ext.getBody());
+
+	});
+
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp() + "/cp/shop/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.JSON.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+
+	function myUpdate() {
+		Ext.MessageBox.wait("更新中...", "提示");
+		Ext.Ajax.request({
+			url : getServerHttp() + "/cp/shop/update.htm",
+			success : function(response) {
+				var json = Ext.JSON.decode(response.responseText);
+				Ext.Msg.alert("提示", json.tip.msg);
+				dataStore.load();
+			},
+			failure : function(response) {
+				Ext.Msg.alert("提示", "操作失败!");
+			}
+		});
+	}//#myUpdate
+</script>
+
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+</head>
+<body>
+
+</body>
+</html>

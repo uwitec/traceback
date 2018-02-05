@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title></title>
+<meta charset="UTF-8">
+<link rel="stylesheet"
+	href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript">
+	var dataStore;
+	Ext.onReady(function() {
+				dataStore = Ext.create('Ext.data.Store', {
+					fields : [ 'file_name', 'created', 'kid' ],
+					remoteSort : true,
+					autoLoad : true,
+					pageSize : 10,
+					sorters : {
+						property : 'created',
+						direction : 'DESC'
+					},
+					proxy : {
+						type : "ajax",
+						url : getServerHttp() + "/cp/file/list_data.htm",
+						reader : {
+							type : 'json',
+							root : 'list',
+							totalProperty : 'total'
+						}
+					},
+					listeners : {
+						'beforeload' : function(store, op, options) {
+							var params = searchFormPanel.getForm().getValues();
+							Ext.apply(dataStore.proxy.extraParams, params);
+						}
+					}
+				}); //#dataStore
+
+				var searchFormPanel = Ext.create('Ext.form.Panel', {
+					frame : true,
+					title : "搜索条件",
+					style : {
+						marginBottom : '5px'
+					},
+					bodyStyle : {
+						padding : '10px'
+					},
+					buttonAlign : "center",
+					collapsible : true,
+					defaultType : "textfield",
+					items : [ {
+						xtype : "container",
+						layout : "hbox",
+						items : [ {
+							xtype : "textfield",
+							fieldLabel : "文件名",
+							name : "srh.file_name",
+							id : "srh.filename"
+						} ]
+					} ],
+					buttons : [ {
+						text : "搜索",
+						icon : jcapp.getIcon("magnifier.png"),
+						handler : function() {
+							dataStore.load({
+							//params:params()
+							});
+							dataStore.sync();
+						}
+					}, {
+						text : "重置",
+						icon : jcapp.getIcon("arrow_refresh.png"),
+						handler : function() {
+							this.up('form').getForm().reset();
+							dataStore.load({});
+							dataStore.sync();
+						}
+					} ]
+				}); //#searchFormPanel
+
+				var listGridPanel = Ext
+						.create(
+								'Ext.grid.Panel',
+								{
+									title : '文件列表',
+									tbar : [ {
+										text : '上传',
+										xtype : 'button',
+										icon : jcapp.getIcon("add.png"),
+										handler : function() {
+											myAdd();
+										}
+									} ],
+									dockedItems : [ {
+										xtype : 'pagingtoolbar',
+										store : dataStore, // same store GridPanel is using
+										dock : 'bottom',
+										displayInfo : true
+									} ],
+									store : dataStore,
+									columns : [
+											{
+												text : '文件名',
+												dataIndex : 'file_name',
+												flex : 1
+											},
+											{
+												text : '上传时间',
+												dataIndex : 'created',
+												flex : 1,
+												renderer : function(val) {
+													if (val != '') {
+														return Ext.Date.format(new Date(val), "Y-m-d H:i:s");
+													}
+												}
+											},
+											{
+												text : '文件列表',
+												dataIndex : 'kid',
+												flex : 1,
+												renderer : function(value,
+														cellmeta, record,
+														rowIndex, columnIndex,
+														store) {
+
+													var down_url = getServerHttp() + "/download/"
+															+ record.data['kid']
+															+ ".htm";
+													var img_url = getServerHttp() + "/img/"
+															+ record.data['kid']
+															+ ".htm?mw=30&mh=50";
+													var name = record.data['file_name']
+													if (name.endsWith("jpg")) {
+														return '<a target="_blank" href="'+down_url+'"><img src='+img_url+'/></a>';
+													} else {
+														return '<a target="_blank" href="'+down_url+'"><img src='
+																+ jcapp
+																		.getIcon("disk_download.png")
+																+ ' /></a>';
+														z
+													}
+													//var imgModel = '<a target="_blank" href="@down_url"><img src="@img_url" title="点击查看大图片" /></a>';
+													//return imgModel.replace('@down_url',down_url).replace('@img_url',img_url); 
+													//return '<a target="_blank" href="'+down_url+'"><img src='+img_url+'/></a>';
+
+												}
+											},
+											{
+												xtype : "actioncolumn",
+												align : "center",
+												text : '操作',
+												flex : 1,
+												items : [ {
+													xtype : 'button',
+													tooltip : '获取路径',
+													icon : jcapp.getIcon("application_form_edit.png"),
+													handler : function(grid, rowIndex, colIndex) {
+														var rec = grid.getStore().getAt(rowIndex);
+														//alert("编辑 " + rec.get('kid'));
+														myEdit(rec.get('kid'));
+													}
+												},{xtype : "container"},
+												{
+													xtype : 'button',
+													tooltip : '删除',
+													icon : jcapp
+															.getIcon("cross.png"),
+													handler : function(grid,
+															rowIndex, colIndex) {
+														var rec = grid
+																.getStore()
+																.getAt(rowIndex);
+														myDel(rec.get('kid'));
+													}
+												} ]
+
+											} ]
+								}); //#listGridPanel
+
+				searchFormPanel.render(Ext.getBody());
+				listGridPanel.render(Ext.getBody());
+
+			});
+
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp() + "/cp/file/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+
+	function download(kid) {
+		window.location = "/rest/download.htm?file_id=" + kid;
+	}
+</script>
+
+
+<script type="text/javascript">
+	var file_form_panel = Ext.create('Ext.form.Panel', {
+		width : 400,
+		bodyPadding : 10,
+		frame : true,
+		items : [ {
+			xtype : 'filefield',
+			name : 'file',
+			fieldLabel : '文件:',
+			labelWidth : 50,
+			msgTarget : 'side',
+			allowBlank : false,
+			anchor : '100%',
+			buttonText : '选择文件'
+		} ],
+
+		buttons : [ {
+			text : '上传',
+			handler : function() {
+				var form = this.up('form').getForm();
+				if (form.isValid()) {
+					form.submit({
+						url : '/upload.htm',
+						waitMsg : '处理中，请稍后...',
+						success : function(fp, o) {
+							Ext.Msg.alert('Success', 'Your photo "' + o.result
+									+ '" has been uploaded.');
+							dataStore.load({});
+							dataStore.sync();
+							file_form_panel_win.close();
+						}
+					});
+				}
+			}
+		} ]
+	});
+
+	var file_form_panel_win = Ext.create("Ext.Window", {
+		title : "上传文件",
+		closeAction : "hide",
+		items : file_form_panel
+	});
+
+	function myAdd() {
+		file_form_panel.getForm().reset();
+		file_form_panel_win.show();
+
+	}
+
+	/* 	function myAdd() {
+	 add_form_panel.getForm().reset();
+	 add_form_panel_win.show();
+	 } */
+</script>
+</head>
+<script type="text/javascript" src="edit.js"></script>
+<body>
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="
+     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+     http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.3.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+     http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+     ">
+
+	<context:component-scan base-package="com.tmsps.traceback.**" />
+
+    <!-- 解决@responsebody 中文乱码 -->
+    <mvc:annotation-driven>
+        <mvc:message-converters>
+            <bean class="org.springframework.http.converter.StringHttpMessageConverter">
+                <property name="supportedMediaTypes">
+                    <list>
+                        <value>text/plain;charset=UTF-8</value>
+                        <value>text/html;charset=UTF-8</value>
+                    </list>
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+
+    <!-- 拦截配置 -->
+    <mvc:interceptors>
+    	<mvc:interceptor>
+            <mvc:mapping path="/cp/**" />
+            <bean class="com.tmsps.traceback.interceptor.LoginInterceptor"></bean>
+        </mvc:interceptor>       
+     	<mvc:interceptor>
+            <mvc:mapping path="/shop/**" />
+            <bean class="com.tmsps.traceback.interceptor.LoginShopInterceptor"></bean>          
+        </mvc:interceptor> 
+        <mvc:interceptor>
+            <mvc:mapping path="/cp/**" />
+            <mvc:mapping path="/shop/**" />
+            <bean class="com.tmsps.traceback.interceptor.ExtInterceptor"></bean>
+        </mvc:interceptor>
+    </mvc:interceptors>
+
+    <!-- 文件上传  -->
+    <bean id="multipartResolver"
+          class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property value="5120" name="maxInMemorySize"/>
+        <!--
+        <property value="/upload/tmp/" name="uploadTempDir"/>
+        -->
+        <property value="1024000000" name="maxUploadSize"/>
+    </bean>
+
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/view"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+
+</beans>

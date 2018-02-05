@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>异常显示 </title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript">
+	 	var add_panel;
+	 	
+		Ext.onReady(function() {
+		
+			var searchFormPanel = Ext.create('Ext.form.Panel', {
+			
+			frame : true,
+			title : "异常内容",
+			style : {
+				marginBottom : '5px'
+			},
+			buttonAlign : "center",
+			collapsible : true,
+			defaultType : "textfield",
+			
+		});
+		add_panel = Ext.create("Ext.form.Panel", {
+			url: getServerHttp()+"/cp/website/valid_db.htm",
+			frame : true,
+			height:600,
+			width:'100%',
+			title : '异常信息',
+			style : {
+				marginBottom : '100px'
+			},
+			buttonAlign : "center",
+			bodyStyle : "paddingTop: 10px;paddingBottom : 10px;paddingRight : 10px;",
+			defaultType : "textfield",
+			xtype : "container",
+			layout : {
+				type : '',
+				columns : 1,
+				tableAttrs: {
+				}
+			},
+			defaults : {
+				style : 'marginLeft:10px;'
+			},
+			items : [ {
+				xtype : "container",
+				
+				defaults : {
+					padding : '10 0 0 0'
+				},
+				items : [  
+				 
+				 {  
+					 width:600,  
+					 height:300,
+					 labelWidth : 80,
+					 xtype:'textarea',  
+					 fieldLabel:'异常内容',
+					 name : 'errorList',
+					 valueField : 'errorList'
+					 
+				 },
+				 
+				]
+			}],
+			
+		});
+		add_panel.render(Ext.getBody()); 
+		
+		myEdit();
+	});
+	
+	function myEdit() {
+		Ext.MessageBox.wait('加载数据','请稍等...');
+		Ext.Ajax.request({
+			url : getServerHttp()+'/cp/website/valid_db.htm',
+			success : function(response) {
+				Ext.MessageBox.hide();
+				var json = Ext.JSON.decode(response.responseText);
+				add_panel.getForm().reset();
+				add_panel.getForm().setValues(json);
+			},
+			failure : function(response) {
+				Ext.MessageBox.hide();
+				//Ext.Msg.alert("提示", "操作失败!");
+			}
+		});
+	}// #myEdit  */
+	
+	
+	
+	
+</script>
+</head>
+<body>
+</body>
+</html>

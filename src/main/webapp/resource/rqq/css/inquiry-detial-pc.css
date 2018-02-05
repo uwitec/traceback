@@ -1,0 +1,26 @@
+.main-img{
+    width: 449px;
+    height: 703px;
+    margin: auto auto;
+    position: relative
+
+}
+.bg-img{
+    width:100%;
+}
+.main {
+    overflow: hidden;
+    background-color: white;
+    overflow-y: scroll;
+    width: 313px;
+    height: 549px;
+    position: absolute;
+    top: 156px;
+    left: 68px;
+    border: 1px solid #585656;
+    border-radius: 5px;
+}
+.demo{
+    width: 92%;
+    margin: auto;
+}

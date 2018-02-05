@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<!-- 曹家榜 2016 7.12 -->
+<head>
+<title>权限组列表</title>
+<meta charset="UTF-8">
+<link rel="stylesheet"
+	href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript"
+	src="../../resource/lib/ext_plugin/ext-tri-state-tree/TriStateTree2.js"></script>
+<script type="text/javascript">
+	var dataStore;
+	var treeStore;
+	var treePanel;
+	var editTreePanel;
+	var comboxStore;
+
+	//设置ComboBox列表数据源参数
+	comboxStore = Ext.create('Ext.data.Store', {
+		fields : [ 'name', 'name' ],
+		remoteSort : true,
+		autoLoad : true,
+		pageSize : 50,
+		sorters : {
+			property : 'name',
+			direction : 'ASC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp() + "/cp/auth/list_data_combox.htm",
+			reader : {
+				type : 'json',
+				root : 'list',
+				totalProperty : 'page.rowTotal'
+			}
+		}
+	});
+
+	Ext.onReady(function() {
+
+		//初始化 树
+		treeStore = Ext.create('Ext.data.TreeStore', {
+			proxy : {
+				type : 'ajax',
+				url : getServerHttp() + "/cp/auth/auth_data_checkbox.htm",
+				reader : {
+					type : 'json',
+				}
+			}
+		});
+		treePanel = Ext.create('Ext.ux.tree.TriStateTreePanel', {
+			store : treeStore,
+			rootVisible : false,
+			width : 400,
+			height : 300
+		});
+
+		editTreePanel = Ext.create('Ext.ux.tree.TriStateTreePanel', {
+			store : treeStore,
+			rootVisible : false,
+			width : 400,
+			height : 300
+		});
+
+		//初始化列表数据
+		dataStore = Ext.create('Ext.data.Store', {
+			fields : [ 'name', 'codes', 'kid' ],
+			remoteSort : true,
+			autoLoad : true,
+			pageSize : 27,
+			sorters : {
+				property : 'created',
+				direction : 'DESC'
+			},
+			proxy : {
+				type : "ajax",
+				url : getServerHttp() + "/cp/role/list_data.htm",
+				reader : {
+					type : 'json',
+					root : 'list',
+					totalProperty : 'page.rowTotal'
+				}
+			},
+			listeners : {
+				'beforeload' : function(store, op, options) {
+					var params = searchFormPanel.getForm().getValues();
+					Ext.apply(dataStore.proxy.extraParams, params);
+				}
+			}
+		}); //#dataStore
+
+		var searchFormPanel = Ext.create('Ext.form.Panel', {
+			frame : true,
+			title : "搜索条件",
+			style : {
+				marginBottom : '5px'
+			},
+			bodyStyle : {
+				padding : '10px'
+			},
+			buttonAlign : "center",
+			collapsible : true,
+			defaultType : "textfield",
+			items : [ {
+				xtype : "container",
+				layout : "hbox",
+				items : [ {
+					xtype : "textfield",
+					fieldLabel : "权限组",
+					name : "srh.name"
+				} ]
+			} ],
+			buttons : [ {
+				text : "搜索",
+				icon : jcapp.getIcon("magnifier.png"),
+				handler : function() {
+					dataStore.load({
+					//params:params()
+					});
+					dataStore.sync();
+				}
+			}, {
+				text : "重置",
+				icon : jcapp.getIcon("arrow_refresh.png"),
+				handler : function() {
+					this.up('form').getForm().reset();
+				}
+			} ]
+		}); //#searchFormPanel
+		var listGridPanel = Ext.create('Ext.grid.Panel', {
+			title : '权限组列表 ',
+			id : 'roleGrid',
+			tbar : [ {
+				text : '新增',
+				xtype : 'button',
+				icon : jcapp.getIcon("add.png"),
+				handler : function() {
+					myAdd();
+				}
+			}, ],
+			dockedItems : [ {
+				xtype : 'pagingtoolbar',
+				store : dataStore, // same store GridPanel is using
+				dock : 'bottom',
+				displayInfo : true
+			} ],
+			store : dataStore,
+			/*选择框 
+			selModel:Ext.create('Ext.selection.CheckboxModel', {
+					  	checkOnly:true
+					  }), */
+			columns : [ {
+				text : '权限组 ',
+				dataIndex : 'name',
+				flex : 1
+			}, {
+				text : '权限 ',
+				dataIndex : 'codes',
+				flex : 2
+			}, {
+				text : '备注 ',
+				dataIndex : 'note',
+				flex : 1
+			}, {
+				xtype : "actioncolumn",
+				align : "center",
+				text : '操作',
+				flex : 1,
+				items : [ {
+					xtype : 'button',
+					tooltip : '编辑',
+					icon : jcapp.getIcon("application_form_edit.png"),
+					handler : function(grid, rowIndex, colIndex) {
+						var rec = grid.getStore().getAt(rowIndex);
+						//alert("编辑 " + rec.get('kid'));
+						myEdit(rec.get('kid'));
+					}
+				}, {
+					xtype : "container"
+				}, {
+					xtype : 'button',
+					tooltip : '删除',
+					icon : jcapp.getIcon("cross.png"),
+					handler : function(grid, rowIndex, colIndex) {
+						var rec = grid.getStore().getAt(rowIndex);
+						myDel(rec.get('kid'));
+					}
+				} ]
+
+			} ]
+		}); //#listGridPanel
+
+		searchFormPanel.render(Ext.getBody());
+		listGridPanel.render(Ext.getBody());
+
+	});
+
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp()+"/cp/role/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.JSON.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myEdit
+</script>
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+<script type="text/javascript" src="del_auth.js"></script>
+</head>
+<body>
+	<div id="grid-example"></div>
+</body>
+</html>

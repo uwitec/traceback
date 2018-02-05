@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>畅享KTV平台端</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<!-- 顶部  -->
+<script type="text/javascript">
+	function get_current_user(){
+		var name = "";
+		Ext.Ajax.request({
+			async:false,
+			url : getServerHttp()+'/cp/admin/get_current_user.htm',
+			success : function(response) {
+				var json = Ext.JSON.decode(response.responseText);
+				name = json.username;
+			},
+			method : 'post'
+		});
+		return name;
+	}//#get_current_user
+
+	var button = Ext.create("Ext.Button", {
+		text : "控制面板",
+		//iconCls: "menu-button",
+		icon : jcapp.getIcon("application_side_list.png"),
+		menu : {
+			items : [ {
+				text : '个人信息'
+			}, {
+				text : '密码修改',
+				handler : function() {
+					var title = "密码修改";
+					var code = "pwdchange";
+					var url = "../admin/pwd.html";
+
+					openTab(title, code, url);
+				}
+			} ]
+		}
+	}).showMenu();
+	
+	function quit(){
+		Ext.Ajax.request({
+            url: '/logout',
+            method: 'GET',
+            success: function (response, options) {	                	
+            	var obj = Ext.JSON.decode(response.responseText);
+            	if(obj.tip.type=="success"){
+           		 window.location="../../login_cp.html";
+           	 	} 
+                //Ext.MessageBox.alert('成功', '从服务端获取结果: ' + response.responseText);
+            },
+            failure: function (response, options) {
+                Ext.MessageBox.alert('失败', '请求超时或网络故障,错误编号：' + response.status);
+            }
+        });
+	}
+	
+	var logoutButton = Ext.create("Ext.Button", {
+
+		text : "退出系统",
+		icon : jcapp.getIcon("application_side_expand.png"),
+		//iconCls: "menu-button",
+		handler : function() {
+			Ext.Msg.confirm("提示:", "确认退出吗?", function(e) {
+				if (e == "yes") {
+					quit();
+				}//#if yes
+			});
+		},
+	});
+	var panelHeight = 60;
+	var topPanel = Ext.create('Ext.panel.Panel', {
+		region : 'north',
+		height : panelHeight,
+		layout : 'column',
+		border : false,
+		items : [ {
+			xtype : 'panel',
+			columnWidth : .50,
+			height : panelHeight,
+			bodyStyle : "padding-top:0px;padding-left:25px;background-color:#DEECFD;",
+			html : '<img src="../../resource/img/head.png" height="60" />',
+			border : false
+		}, {
+			//title: 'Width = 75%',
+			columnWidth : .50,
+			height : panelHeight,
+			bodyStyle : "background-color:#DEECFD;",
+			//html: 'Content',
+			border : false
+		}, {//title: 'Width = 250px',
+			xtype : 'panel',
+			autoWidth : true,
+			height : panelHeight,
+			bodyStyle : "padding-top:30px;background-color:#DEECFD;",
+			items : [ button ],
+			border : false
+		}, {
+			//title: 'Width = 250px',
+			xtype : 'panel',
+			width : 150,
+			height : panelHeight,
+			bodyStyle : "padding-top:30px;padding-left:20px;background-color:#DEECFD;",
+			items : [ logoutButton ],
+			border : false
+		},{
+			xtype : 'panel',
+			width : 180,
+			id : 'uname',
+			height : panelHeight,
+			bodyStyle : "padding-top:28px;background-color:#DEECFD;",
+			html : "<div style='background-color:#DEECFD;margin-top:5px;font-size:14px;margin-right:20px;'>当前用户:<span style='color:red;'>"+get_current_user()+"</span></div>",
+			border : false
+		} ]
+	});
+	
+	</script>
+<!-- 左侧菜单 -->
+<style type="text/css">
+<!--
+.x-tree-node-text, .x-accordion-hd {
+	cursor: pointer;
+}
+-->
+</style>	
+	<script type="text/javascript">
+	function openTab(title, code, url) {
+		var tabId = "tab_" + code;
+		var panel = Ext.getCmp(tabId);
+		if (!panel) {
+			var href = "" + url;
+			var content = '<iframe id="iframe_'+tabId+'" scrolling="yes" frameborder="0"  src="' + href + '" style="width:100%;height:100%;"></iframe>';
+			panel = new Ext.Panel({
+				id : tabId,
+				title : title,
+				closable : true,
+				bodyPadding : 0,
+				html : content
+			});
+			Ext.getCmp('tabpanels').add(panel);
+		}else{
+
+			document.getElementById("iframe_"+tabId).contentWindow.location.reload(true);
+			
+		}
+		Ext.getCmp('tabpanels').setActiveTab(panel);
+	}
+	
+	function closeTab(code){
+		var tabId = "tab_" + code;
+		var panel = Ext.getCmp(tabId);
+		if (panel) {
+			panel.close();
+		}
+	}
+
+	var leftPanel;
+	Ext.onReady(function() {
+		/** 
+		 * 组建树 
+		 */
+		var buildTree = function(json) {
+			var viewTree = Ext.create('Ext.tree.Panel', {
+				rootVisible : false,
+				border : false,
+				store : Ext.create('Ext.data.TreeStore', {
+					root : {
+						expanded : true,
+						children : json.children
+					}
+				}),
+				listeners : {
+					'itemclick' : function(view, record, item, index, e) {
+						if (record.isLeaf()) {
+							var title = record.get("text");
+							var code = record.get("id");
+							var url = record.get("iconCls");
+							openTab(title, code, url);
+
+						} else {
+							//关闭节点
+							//console.log(viewTree);
+						} //#if
+					},
+					scope : this
+				}
+			});
+			viewTree.expandAll();
+			return viewTree;
+		};
+		/** 
+		 * 左,panel.Panel 
+		 */
+		leftPanel = Ext.create('Ext.panel.Panel', {
+			region : 'west',
+			title : '导航栏',
+			width : 230,
+			layout : 'accordion',
+			collapsible : true,
+			listeners : {
+				collapse : function(o,ep){
+					var active_tab = Ext.getCmp("tabpanels").getActiveTab();
+					var obj = document.getElementById("iframe_"+active_tab.id);
+					if(obj != null){
+						obj.contentWindow.location.reload(true);
+					}
+				},
+				expand : function(o,ep){
+					var active_tab = Ext.getCmp("tabpanels").getActiveTab();
+					var obj = document.getElementById("iframe_"+active_tab.id);
+					if(obj != null){
+						obj.contentWindow.location.reload(true);
+					}
+				}
+			}
+		});
+
+		/** 
+		 * 加载菜单树 
+		 */
+		Ext.Ajax.request({
+			url : '/cp/frame/left_data.htm',
+			success : function(response) {
+				var json = Ext.JSON.decode(response.responseText)
+				Ext.each(json, function(el) {
+					var panel = Ext.create('Ext.panel.Panel', {
+						id : el.id,
+						title : el.text,
+						layout : 'fit'
+					});
+					panel.add(buildTree(el));
+					leftPanel.add(panel);
+				});
+			},
+			failure : function(request) {
+				Ext.MessageBox.show({
+					title : '操作提示',
+					msg : "连接服务器失败",
+					buttons : Ext.MessageBox.OK,
+					icon : Ext.MessageBox.ERROR
+				});
+			},
+			method : 'post'
+		});
+		
+		var win = Ext.create('Ext.container.Viewport', {
+			layout : "border",
+			items : [ topPanel, leftPanel, {
+				region : 'center',
+				id : 'tabpanels',
+				xtype : 'tabpanel',
+				items : [ {
+					title : '主页',
+					id: 'toppage',
+					html : "<div id='headpage' style='margin-top:50px;margin-left:20px;'><h2>欢迎使用</h2></div>"
+				} ]
+			} ],
+			renderTo : Ext.getBody()
+		});
+		//alert()
+		//Ext.getCmp('tabpanels').add({title: '测试',html: 'Hello world 3',closable: true});
+		
+		//升级
+		get_current_user();
+	});
+	
+	function getNext(no){
+		Ext.Ajax.request({
+			url : '/cp/frame/get_notice?no='+no,
+			success : function(response) {
+				var json = Ext.JSON.decode(response.responseText);
+				Ext.getCmp('toppage').body.update(json.html)
+			},
+			method : 'post'
+		});
+	}
+	
+</script>
+</head>
+<body>
+</body>
+</html>

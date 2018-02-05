@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>管理员列表</title>
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript">
+	var comboxStore;
+
+	//设置ComboBox列表数据源参数
+	comboxStore = Ext.create('Ext.data.Store', {
+		fields : [ 'name', 'kid' ],
+		remoteSort : true,
+		autoLoad : true,
+		pageSize : 50,
+		sorters : {
+			property : 'name',
+			direction : 'ASC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp()+"/cp/role/list_data_combox.htm",
+			reader : {
+				type : 'json',
+				root : 'list',
+				totalProperty : 'page.rowTotal'
+			}
+		}
+	}); //#comboxStore
+</script>
+<script type="text/javascript">
+	var dataStore;
+	dataStore = Ext.create('Ext.data.Store', {
+		remoteSort : true,
+		autoLoad : true,
+		pageSize : 2,
+		sorters : {
+			property : 'created',
+			direction : 'DESC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp() + "/cp/admin/list_data.htm",
+			reader : {
+				type : 'json',
+				root : 'list',
+				totalProperty : 'page.totalRow'
+			}
+		},
+		listeners : {
+			'beforeload' : function(store, op, options) {
+				var params = searchFormPanel.getForm().getValues();
+				Ext.apply(dataStore.proxy.extraParams, params);
+			}
+		}
+	}); //#dataStore
+
+	var searchFormPanel = Ext.create('Ext.form.Panel', {
+		frame : true,
+		title : "搜索条件",
+		style : {marginBottom : '5px'},
+		bodyStyle : {padding: '10px'},
+		buttonAlign : "center",
+		collapsible : true,
+		defaultType : "textfield",
+		items : [ {
+			xtype : "container",
+			layout : "hbox",
+			items : [ {
+				xtype : "textfield",
+				fieldLabel : "用户名",
+				name : "srh.uname"
+			}, {
+				xtype : "textfield",
+				fieldLabel : "姓名",
+				name : "srh.name"
+			} ]
+		} ],
+		buttons : [ {
+			text : "搜索",
+			icon : jcapp.getIcon("magnifier.png"),
+			handler : function() {
+				dataStore.load({
+				//params:params()
+				});
+				dataStore.sync();
+			}
+		}, {
+			text : "重置",
+			icon : jcapp.getIcon("arrow_refresh.png"),
+			handler : function() {
+				this.up('form').getForm().reset();
+			}
+		} ]
+	}); //#searchFormPanel
+	var listGridPanel = Ext.create('Ext.grid.Panel', {
+		title : '管理员列表',
+		tbar : [ {
+			text : '新增',
+			xtype : 'button',
+			icon : jcapp.getIcon("add.png"),
+			handler : function() {
+				myAdd();
+			}
+		} ],
+		dockedItems : [ {
+			xtype : 'pagingtoolbar',
+			store : dataStore, // same store GridPanel is using
+			dock : 'bottom',
+			displayInfo : true
+		} ],
+		store : dataStore,
+		columns : [ {
+			text : '用户名',
+			dataIndex : 'uname',
+			flex : 1
+		}, {
+			text : '姓名',
+			dataIndex : 'name',
+			flex : 1
+		}, 
+		 {
+			text : '权限组',
+			dataIndex : 'role_name',
+			flex : 2
+		},
+		{
+			xtype : "actioncolumn",
+			align : "center",
+			text : '操作',
+			items : [ {
+				xtype : 'button',
+				tooltip : '限制登陆',
+				icon : jcapp.getIcon("key_stop.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					mylimit(rec, rec.get('kid'));
+				}
+			}, {
+				xtype : "container"
+			},{
+				xtype : 'button',
+				tooltip : '编辑',
+				icon : jcapp.getIcon("application_form_edit.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					//alert("编辑 " + rec.get('kid'));
+					myEdit(rec.get('kid'));
+				}
+			}, {
+				xtype : "container"
+			}, {
+				xtype : 'button',
+				tooltip : '删除',
+				icon : jcapp.getIcon("cross.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					myDel(rec.get('kid'));
+				}
+			} ]
+
+		} ]
+	}); //#listGridPanel
+	Ext.onReady(function() {
+		searchFormPanel.render(Ext.getBody());
+		listGridPanel.render(Ext.getBody());
+
+	});
+
+	function mylimit(rec, kid) {
+		var status;
+		if (rec.get("status_sys") == "正常状态") {
+			status = "限制登录"
+		} else {
+			status = "正常状态"
+		}
+		Ext.Msg.confirm("提示:", "确认" + status + "?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp()+"/cp/admin/limit.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.JSON.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+
+	
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp()+"/cp/admin/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.JSON.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+</script>
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+</head>
+<body>
+</body>
+</html>

@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>权限列表</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../../resource/js/app.js"></script>
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+
+<script type="text/javascript">
+	var dataStore;
+
+	Ext.onReady(function() {
+	dataStore = Ext.create('Ext.data.TreeStore', {
+			proxy : {
+				type : 'ajax',
+				url : getServerHttp() + "/cp/auth/auth_data_sys.htm",
+				reader : {
+					type : 'json',
+				}
+			}
+		});
+
+		var menuPanel = Ext.create('Ext.tree.Panel', {
+			store : dataStore,
+			width : 400,
+			title : "权限管理",
+			border : true,
+			rootVisible : false,
+			animCollapse : true,
+			rootVisible : false,
+			autoScroll : true,
+			animate : true,
+
+			listeners : {
+				itemcontextmenu : function(view, rec, node, index, e) {
+					e.stopEvent();
+					e.preventDefault();
+
+					// 添加一个节点（叶子）  
+					var chlidNodeClickMenu = Ext.create('Ext.menu.Menu', {
+						items : [ {
+							text : '新增子菜单',
+							icon : jcapp.getIcon("add.png"),
+							handler : function() {
+								var up_code = rec.get("id");
+								var up_name = rec.get("text");
+								myAdd(up_code, up_name);
+							}
+						}, {
+							text : '新增同级菜单',
+							icon : jcapp.getIcon("vcard_add.png"),
+							handler : function() {
+								var up_code = rec.parentNode.get("id");
+								var up_name = rec.parentNode.get("text");
+
+								if (up_code == "root") {
+									up_code = "";
+								}
+								myAdd(up_code, up_name);
+							}
+						}, {
+							text : '修改菜单',
+							icon : jcapp.getIcon("vcard_edit.png"),
+							handler : function() {
+								console.log(rec.raw.kid);
+								myEdit(rec.raw.kid);
+							}
+						}, {
+							text : '删除菜单',
+							icon : jcapp.getIcon("vcard_delete.png"),
+							handler : function() {
+								//console.log(rec);
+								myDel(rec.raw.kid);
+							}
+						} ]
+					});
+
+					//menu的showAt，不要忘记  
+					chlidNodeClickMenu.showAt(e.getPoint());
+
+					return false;
+				}
+			}
+		//#listeners
+		});//#menuPanel
+
+		menuPanel.render(Ext.getBody());
+	});
+
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp() + "/cp/auth/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.JSON.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+</script>
+</head>
+<body>
+
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>生产数据</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<link href="../../resource/Hplus-v.4.1.0/css/style.css" rel="stylesheet">
+<style type="text/css">
+	.x-panel-default-framed {
+	    border-color: #CFCFCF;
+	}
+</style>
+<script type="text/javascript">
+var comboxStore;
+
+//设置ComboBox列表数据源参数
+comboxStore = Ext.create('Ext.data.Store', {
+	fields : [ 'name', 'kid' ],
+	remoteSort : true,
+	autoLoad : true,
+	sorters : {
+		property : 'name',
+		direction : 'ASC'
+	},
+	proxy : {
+		type : "ajax",
+		url : "/traceback/shop/product/list_data.htm",
+		reader : {
+			type : 'json',
+			root : 'list',
+			totalProperty : 'page.rowTotal'
+		}
+	}
+}); //#comboxStore
+</script>
+<script type="text/javascript">
+	var dataStore;
+
+	Ext.onReady(function() {
+
+		dataStore = Ext.create('Ext.data.Store', {
+			fields : ['kid' ],
+			remoteSort : true,
+			autoLoad : true,
+			pageSize : 15,
+			sorters : {
+				property : 'created',
+				direction : 'DESC'
+			},
+			proxy : {
+				type : "ajax",
+				url : "/traceback/shop/production/list_data.htm",
+				reader : {
+					type : 'json',
+					root : 'list',
+					totalProperty : 'page.totalRow'
+				}
+			},
+			listeners : {
+				'beforeload' : function(store, op, options) {
+					var params = searchFormPanel.getForm().getValues();
+					Ext.apply(dataStore.proxy.extraParams, params);
+				}
+			}
+		}); //#dataStore
+
+		//搜索
+		var searchFormPanel = Ext.create('Ext.form.Panel', {
+			frame : true,
+			title : "搜索条件",
+			style : {
+				marginBottom : '5px'
+			},
+			bodyStyle : {
+				padding : '10px'
+			},
+			buttonAlign : "center",
+			collapsible : true,
+			defaultType : "textfield",
+			items : [ {
+				xtype : "container",
+				layout : "hbox",
+				items : [ {
+					xtype : "textfield",
+					fieldLabel : "产品名称",
+					name : "srh.name"
+				}]
+			} ],
+			buttons : [ {
+				text : "搜索",
+				icon : jcapp.getIcon("magnifier.png"),
+				handler : function() {
+					dataStore.load({
+					//params:params()
+					});
+					dataStore.sync();
+				}
+			}, {
+				text : "重置",
+				icon : jcapp.getIcon("arrow_refresh.png"),
+				handler : function() {
+					this.up('form').getForm().reset();
+					dataStore.load({});
+					dataStore.sync();
+				}
+			} ]
+		}); //#searchFormPanel
+		
+		var listGridPanel = Ext.create('Ext.grid.Panel', {
+			title : '产品生产数据列表',
+			dockedItems : [ {
+				xtype : 'pagingtoolbar',
+				store : dataStore, // same store GridPanel is using
+				dock : 'bottom',
+				displayInfo : true
+			} ],
+			tbar : [ {
+				text : '生产',
+				xtype : 'button',
+				icon : jcapp.getIcon("add.png"),
+				handler : function() {
+					myAdd();
+				}
+			} ],
+			store : dataStore,
+			columns : [{
+				text : '条码',
+				dataIndex : 'barcode',
+				flex : 1
+			}, {
+				text : '产品名称',
+				dataIndex : 'name',
+				flex : 1
+			}, {
+				text : '数量',
+				dataIndex : 'number',
+				flex : 1
+			}, {
+				text : '单位',
+				dataIndex : 'unit',
+				flex : 1
+			}, {
+				text : '生产日期',
+				dataIndex : 'production_time',
+				flex : 1,
+				renderer : function(val) {
+					if (val != '') {
+						return Ext.Date.format(new Date(val), "Y-m-d ");
+					}
+				}
+			}, {
+				text : '合格证名称',
+				dataIndex : 'certificate_name',
+				flex : 1
+			}, {
+				text : '合格证签发日期',
+				dataIndex : 'certificate_start_time',
+				flex : 1,
+				renderer : function(val) {
+					if (val != '') {
+						return Ext.Date.format(new Date(val), "Y-m-d ");
+					}
+				}
+			}, {
+				text : '合格证状态',
+				dataIndex : 'certificate_status',
+				flex : 1,
+				renderer : function(val) {
+					if (val == 1) {
+						return "有效";
+					}else if(val != 1) {
+						return "无效";
+					}
+				}
+			}, {
+				xtype : "actioncolumn",
+				align : "center",
+				text : '操作',
+				flex : 1,
+				items : [{
+					xtype : 'button',
+					tooltip : '修改',
+					icon : jcapp.getIcon("application_form_edit.png"),
+					handler : function(grid, rowIndex, colIndex) {
+						var rec = grid.getStore().getAt(rowIndex);
+						//alert("编辑 " + rec.get('kid'));
+						myEdit(rec.get('kid'));
+					}
+				}, {
+					xtype : "container"
+				},{
+					xtype : 'button',
+					tooltip : '删除',
+					icon : jcapp.getIcon("cross.png"),
+					handler : function(grid, rowIndex, colIndex) {
+						var rec = grid.getStore().getAt(rowIndex);
+						myDel(rec.get('kid'));
+					}
+				} ]
+
+			} ]
+		}); //#listGridPanel
+
+		searchFormPanel.render(Ext.getBody());
+		listGridPanel.render(Ext.getBody());
+
+	});
+	
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : "/traceback/shop/production/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+	
+	document.onreadystatechange = loadingChange;//当页面加载状态改变的时候执行这个方法.    
+    function loadingChange() {
+        if(document.readyState == "complete"){//当页面加载状态为完全结束时进入     
+            window.setTimeout(function(){
+                var ui =document.getElementById("bbs");
+	        	ui.style.display="none";
+            },500);
+        }     
+    }
+</script>
+
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+</head>
+<body style="padding: 15px 15px 15px 15px;">
+	<div class="spiner-cx" id="bbs">
+	    <div class="spiner-example">
+	         <div class="sk-spinner sk-spinner-three-bounce">
+	             <div class="sk-bounce1"></div>
+	             <div class="sk-bounce2"></div>
+	             <div class="sk-bounce3"></div>
+	         </div>
+	    </div>
+	</div>
+</body>
+</html>

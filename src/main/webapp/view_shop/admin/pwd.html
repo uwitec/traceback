@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>管理员列表</title>
+<link rel="stylesheet" href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+
+<script type="text/javascript">
+	var dataStore;
+
+	Ext.onReady(function() {
+
+		searchFormPanel = Ext.create('Ext.form.Panel', {
+			frame : true,
+			height:165,
+			width:'50%',
+			title : "密码修改",
+			style : {
+				marginBottom : '5px'
+			},
+			buttonAlign : "right",
+			collapsible : true,
+			defaultType : "textfield",
+			items : [ {
+				xtype : "container",
+				
+				items : [ {
+					xtype : "textfield",
+					fieldLabel : "当前密码",
+					name : "currentpwd",
+					id : "currentpwd",
+					inputType: 'password',
+					allowBlank:false,
+					style : 'marginLeft:15px;',
+					msgTarget:"side"
+				}, {
+					xtype : "textfield",
+					fieldLabel : "新密码",
+					name : "newpwd",
+					id : "newpwd",
+					inputType: 'password',
+					style : 'marginLeft:15px;',
+					allowBlank:false,
+					vtype:"password",//自定义的验证类型 
+					vtypeText:"两次密码不一致！", 
+					confirmTo:"newpwdone",//要比较的另外一个的组件的id 
+					msgTarget:"side"
+				},{
+					xtype : "textfield",
+					fieldLabel : "确认新密码",
+					inputType: 'password',
+					name : "newpwdone",
+					id : "newpwdone",
+					style : 'marginLeft:15px;',
+					allowBlank:false,
+					vtype:"password",//自定义的验证类型 
+					vtypeText:"两次密码不一致！", 
+					confirmTo:"newpwd",//要比较的另外一个的组件的id
+					msgTarget:"side"
+				} ]
+			} ],
+			buttons : [ {
+				text : "确认修改",
+				type : "submit",
+				icon : jcapp.getIcon("key.png"),
+				handler : function() {
+					
+					 if(searchFormPanel.getForm().isValid()){  	
+						Ext.Ajax.request({
+						    url: '/traceback/shop/admin/pwd_form.htm',
+						    method: 'post',    //这里也可以是get方法，后台接收根据程序语言的不同而不同
+						    params:{ 
+						    	newpwdone:Ext.getCmp("newpwdone").getValue(),
+						    	currentpwd:Ext.getCmp("currentpwd").getValue()	
+						    },    //传递的参数，这里的参数一般是根据元素id来获取值，因为你没有创建单表
+						    success: function(response){
+						        var respText = Ext.decode(response.responseText);
+						       
+						        Ext.Msg.alert("提示", respText.tip.msg);
+						        searchFormPanel.getForm().reset();
+						      
+						        //后台回传的数据
+						    }
+						});
+					 }					
+				}
+			}]
+		}); //#searchFormPanel
+
+		Ext.apply(Ext.form.VTypes,{ 
+			password:function(val,field){//val指这里的文本框值，field指这个文本框组件，大家要明白这个意思 
+			if(field.confirmTo){//confirmTo是我们自定义的配置参数，一般用来保存另外的组件的id值 
+			var pwd=Ext.get(field.confirmTo);//取得confirmTo的那个id的值 
+			return (val==Ext.getCmp("newpwd").getValue()); 
+			} 
+			return true; 
+			} 
+			}); 
+		searchFormPanel.render(Ext.getBody());
+
+	});
+
+</script>
+</head>
+<body>
+
+</body>
+</html>

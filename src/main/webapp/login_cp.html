@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>质量追溯系统 管理后台</title>
+<script type="text/javascript" src="./resource/lib/jquery-1.8.0.min.js"></script>
+<link rel="stylesheet" href="./resource/cp/login/css/bootstrap-3.3.4-dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="./resource/cp/login/css/base.css">
+<link rel="stylesheet" href="./resource/cp/login/css/login.css">
+<link rel="shortcut icon" href="./resource/img/favicon.ico"/>
+<link rel="stylesheet" href="./resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="./resource/lib/extjs6.0/ext-all.js"></script>
+<script src="./resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="./resource/js/app.js"></script>
+<style type="text/css">
+	body{
+		height:100%;
+		background-image: url("./resource/img/login2.jpg");
+	}
+	.login{
+	    margin-top: 150px;
+	}
+	.footer {
+	    width: 100%;
+	    position: absolute;
+	    bottom: 0;
+	    overflow: hidden;
+	    z-index: 999;
+	    margin: 0 auto;
+	    text-align: center;
+	    color: bule;
+	    padding: 5px 0px;
+	}
+</style>
+</head>
+<script type="text/javascript">
+
+$(function(){
+	 $("#uname").focus(function(){
+		 $("#logintip").hide();	 
+	 });	 
+	$("#pwd").focus(function(){
+		 $("#logintip").hide(); 
+	 });
+	$("#submit").click(function(){
+		var uname = $("#uname").val();
+		var pwd = $("#pwd").val();
+	
+		if(uname==""||pwd==""){
+			 $("#logintip").html("用户名和密码不能为空！请输入用户名和密码！！！");
+    		 $("#logintip").show();
+    		 return;
+		}
+		
+		//Ext.Msg.wait('登陆校验...', '提示');
+		Ext.Ajax.request({
+			url : "/traceback/login_cp.htm",
+			params:{uname:uname,pwd:pwd},
+			success : function(response) {
+				var obj = Ext.JSON.decode(response.responseText);
+	           	 if(obj.tip.type=="success"){
+	           		 window.location="/traceback/cp/frame/frame.htm";
+	           	 }  
+	           	 if(obj.tip.type=="error"){
+	           		 $("#logintip").html(obj.tip.msg);
+	           		 $("#logintip").show();          		 
+	           	 } 
+			},
+			failure : function(response) {
+				Ext.Msg.alert("提示", "登陆失败,服务器连接不上!");
+			}
+		});
+		
+	});	
+});
+
+</script>
+<body>
+	<div class="container login">
+		<h1 class="login-title">质量追溯系统 管理后台</h1>
+		<form class="login-form">
+		
+			<div class="input-group input-group-lg login-user">
+				<span class="input-group-addon"><i class="bico bico-user"></i></span> 
+				<input type="text" name="uname" id="uname" class="form-control" placeholder="账号" value="admin" onkeydown='if(event.keyCode==13){pwd.focus();}' />
+			</div>
+			<div class="input-group input-group-lg login-password">
+				<span class="input-group-addon"><i class="bico bico-password"></i></span> 
+				<input type="password" name="pwd" id="pwd" class="form-control" placeholder="密码" value="123456" onkeydown='if(event.keyCode==13){submit.click();}'/>
+			</div>
+			<div class="alert alert-danger" role="alert" hidden="true" id="logintip">您输入的用户名或密码错误！</div>
+			
+			<button class="btn btn-lg btn-block login-btn" type="button" id="submit" >登陆</button>
+		</form>
+	</div>
+	<div class="clearfix"></div>
+	<div class="footer" >
+		<p style=" color: #fff;"> 晋ICP备14007781号-1 &copy; 2016 <a href="http://www.sxxlkj.com/" target="_blank" style="color: #fd5806;"> 山西讯龙科技有限公司  </a> 版权所有 联系方式0351-3853826</p>
+	</div>
+</body>
+</html>

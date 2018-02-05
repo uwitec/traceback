@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>邮箱设置</title>
+<meta charset="UTF-8">
+<link rel="stylesheet"
+	href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript">
+	var add_panel;
+	//var searchFormPanel;
+   var test_panel;
+    var listGridPanel;
+  
+	/* searchFormPanel = Ext.create('Ext.form.Panel', {
+
+		frame : true,
+		title : "邮件设置",
+		style : {marginBottom : '5px'},
+		bodyStyle : {padding: '10px'},
+		buttonAlign : "center",
+		collapsible : true,
+		defaultType : "textfield",
+
+	}); //#searchFormPanel */
+
+	add_panel = Ext.create("Ext.form.Panel", {
+		url : getServerHttp()+'/cp/email/add.htm',
+		title : '邮件设置',
+		frame : true,
+		collapsible : true,
+		buttonAlign : "center",
+		bodyStyle : "paddingTop: 5px;paddingBottom : 5px;paddingRight : 5px;",
+		defaultType : "textfield",
+		width : '100%',
+		layout : {
+			type : 'table',
+			columns : 1,
+			tableAttrs : {
+				style : {
+					height : 165,
+					width : '50%'
+				}
+			}
+		},
+		style : {marginBottom : '5px'},
+		bodyStyle : {padding: '10px'},
+		/* 			defaults : {
+		 style : 'marginTop:30px;marginLeft:100px;'
+		 }, */
+		items : [ {
+			fieldLabel : "区域名",
+			labelWidth : 130,
+			xtype : "textfield",
+			name : 'code',
+			valueField : 'code',
+			//store : SmsStore
+		}, {
+			fieldLabel : "关键字",
+			labelWidth : 130,
+			xtype : "textfield",
+			name : 'accesskey',
+
+			valueField : 'accesskey',
+			value : '',
+		}, {
+			fieldLabel : "关键秘钥",
+			labelWidth : 130,
+			xtype : "textfield",
+
+			valueField : 'accessSecret',
+			name : 'accessSecret'
+		}, {
+			fieldLabel : "发件地址",
+			labelWidth : 130,
+			xtype : "textfield",
+
+			valueField : 'accountName',
+			name : 'accountName'
+		} ],
+		buttons : [  {
+			text : "保存",
+			formBind : true, // only enabled once the form is valid
+			disabled : true,
+			handler : function() {
+				var form = this.up("form").getForm();
+				if (form.isValid()) {
+					form.submit({
+						waitMsg : "保存中...",
+						success : function(form, action) {
+							Ext.Msg.alert("提示", action.result.tip.msg);
+							window.location.reload();
+						},
+						failure : function(form, action) {
+							Ext.Msg.alert("提示", action.result.tip.msg);
+						}
+					});
+				}
+			}
+		} ]
+
+	});
+	 
+
+	 function setData() {
+	 Ext.Ajax.request({
+	 url :getServerHttp()+'/cp/email/edit_email.htm?',
+	 success : function(response) {
+	 var json = Ext.decode(response.responseText);
+	 add_panel.getForm().reset();
+	 add_panel.getForm().setValues(json.email);
+	 
+	 test_panel.getForm().reset();
+		test_panel.getForm().setValues(json.email);
+	 
+	 },
+	 failure : function(response) {
+	 Ext.Msg.alert("提示", "操作失败!");
+	 }
+	 });
+	 }// #myEdit  
+
+	var dataStore;
+	dataStore = Ext.create('Ext.data.Store', {
+		remoteSort : true,
+		autoLoad : true,
+		sorters : {
+			property : 'created',
+			direction : 'DESC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp() + "/cp/email/template/list_data.htm",
+			 reader : {
+				type : 'json',
+				root : 'list',
+			}  
+		}, 
+		listeners : {
+			'beforeload' : function(store, op, options) {
+				//var params = searchFormPanel.getForm().getValues();
+				Ext.apply(dataStore.proxy.extraParams);
+			}
+		}
+	}); //#dataStore
+
+	 listGridPanel = Ext.create('Ext.grid.Panel', {
+		title : '邮件模板',
+		tbar : [ {
+			text : '新增',
+			xtype : 'button',
+			icon : jcapp.getIcon("add.png"),
+			handler : function() {
+				myAdd();
+			}
+		} ],
+		store : dataStore,
+		dockedItems : [ {
+			store : dataStore, // same store GridPanel is using
+			dock : 'bottom',
+			displayInfo : true
+		} ],
+		store : dataStore,
+		columns : [ {
+			text : '模板编号',
+			dataIndex : 'templateId',
+			flex : 1
+		}, {
+			text : '模板名称',
+			dataIndex : 'templateName',
+			valueField : 'templateName',
+			store : dataStore,
+			flex : 1
+		}, {
+			xtype : "actioncolumn",
+			align : "center",
+			text : '操作',
+			items : [ {
+				xtype : "container"
+			}, {
+				xtype : 'button',
+				tooltip : '编辑',
+				icon : jcapp.getIcon("application_form_edit.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					//alert("编辑 " + rec.get('kid'));
+					myEdit(rec.get('kid'));
+				}
+			}, {
+				xtype : "container"
+			}, {
+				xtype : 'button',
+				tooltip : '删除',
+				icon : jcapp.getIcon("cross.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					myDel(rec.get('kid'));
+				}
+			} ]
+
+		} ]
+	});
+	
+	
+	 test_panel = Ext.create("Ext.form.Panel", {
+		title : '邮箱测试',
+		style : {marginBottom : '5px'},
+		bodyStyle : {padding: '10px'},
+		frame : true,
+		collapsible : true,
+		buttonAlign : "center",
+		bodyStyle : "paddingTop: 5px;paddingBottom : 5px;paddingRight : 5px;",
+		defaultType : "textfield",
+		width : '100%',
+		layout : {
+			type : 'table',
+			columns : 1,
+			tableAttrs : {
+				style : {
+					height : 165,
+					width : '50%'
+				}
+			}
+		},
+		/* 			defaults : {
+		 style : 'marginTop:30px;marginLeft:100px;'
+		 }, */
+		 style : {marginBottom : '5px'},
+			bodyStyle : {padding: '10px'},
+		 
+		items : [ {
+			fieldLabel : "模板编号",
+			labelWidth : 130,
+			xtype : "textfield",
+			id : 'domainName',
+			//valueField : 'domainName',
+			name : 'domainName',
+		}, {
+			fieldLabel : "测试接收的邮件地址",
+			labelWidth : 130,
+			xtype : "textfield",
+
+			valueField : 'templateCode',
+			id : 'templateCode',
+			name : 'templateCode',
+		} ],
+		buttons : [ {
+			text : '测试',
+			handler : function() {
+				send();
+			}
+		} ]
+
+	});
+	
+	
+
+	Ext.onReady(function() {
+		/* searchFormPanel.render(Ext.getBody()); */
+		add_panel.render(Ext.getBody());
+		
+		listGridPanel.render(Ext.getBody());
+		test_panel.render(Ext.getBody());
+		setData();
+		
+	});
+
+	function myDel(kid) {
+		//alert(kid);
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax
+						.request({
+							url : "/cp/email/template/del.htm?kid="+kid,
+							success : function(response) {
+								var json = Ext
+										.decode(response.responseText);
+								Ext.Msg.alert("提示", json.tip.msg);
+								dataStore.load();
+							},
+							failure : function(response) {
+								Ext.Msg.alert("提示", "操作失败!");
+							}
+						});
+			}//#if
+		});
+	}//#myDel
+	
+	
+	
+</script>
+<script type="text/javascript" src="send.js"></script>
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+</head>
+<body>
+</body>
+</html>

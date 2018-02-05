@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>短信列表</title>
+<link rel="stylesheet"
+	href="../../resource/lib/extjs6.0/classic/theme-crisp/resources/theme-crisp-all.css"></link>
+<script src="../../resource/lib/extjs6.0/ext-all.js"></script>
+<script src="../../resource/lib/extjs6.0/classic/locale/locale-zh_CN.js"></script>
+<script type="text/javascript" src="../../resource/js/app.js"></script>
+<script type="text/javascript">
+	var dataStore;
+	var add_panel;
+	var test_panel;
+
+	add_panel = Ext.create("Ext.form.Panel", {
+		url : getServerHttp() + '/cp/sms/save_sms.htm',
+		title : '短信设置',
+		frame : true,
+		collapsible : true,
+		buttonAlign : "center",
+		style : {marginBottom : '5px'},
+		bodyStyle : "padding : 10px;",
+		defaultType : "textfield",
+		items : [ {
+			fieldLabel : "主账户ID",
+			labelWidth : 130,
+			xtype : "textfield",
+			name : 'accountsid'
+		}, {
+			fieldLabel : "授令口牌",
+			labelWidth : 130,
+			xtype : "textfield",
+			name : 'authtoken',
+			value : '',
+		}, {
+			fieldLabel : "应用ID",
+			labelWidth : 130,
+			xtype : "textfield",
+			name : 'appid'
+		} ],
+		buttons : [ {
+			text : "保存",
+			formBind : true, // only enabled once the form is valid
+			disabled : true,
+			handler : function() {
+				var form = this.up("form").getForm();
+				if (form.isValid()) {
+					form.submit({
+						waitMsg : "保存中...",
+						success : function(form, action) {
+							Ext.Msg.alert("提示", action.result.tip.msg);
+							window.location.reload();
+						},
+						failure : function(form, action) {
+							Ext.Msg.alert("提示", action.result.tip.msg);
+						}
+					});
+				}
+			}
+		} ]
+
+	});
+
+	test_panel = Ext.create("Ext.form.Panel", {
+		title : '短信测试',
+		frame : true,
+		collapsible : true,
+		buttonAlign : "center",
+		bodyStyle : "padding : 10px;",
+		defaultType : "textfield",
+		layout : {
+			type : 'table',
+			columns : 1,
+			tableAttrs : {
+				style : {
+					height : 165,
+					width : '50%'
+				}
+			}
+		},
+		items : [ {
+			fieldLabel : "测试模板编号",
+			labelWidth : 130,
+			xtype : "textfield",
+			id : 'templatecode',
+			name : 'templatecode'
+		}, {
+			fieldLabel : "测试短信的手机号码",
+			labelWidth : 130,
+			xtype : "textfield",
+			name : 'send_test_sms',
+			id : 'mobile'
+		} ],
+		buttons : [ {
+			text : '短信测试',
+			handler : function() {
+				send();
+			}
+		} ]
+
+	});
+
+	dataStore = Ext.create('Ext.data.Store', {
+		remoteSort : true,
+		autoLoad : true,
+		sorters : {
+			property : 'created',
+			direction : 'DESC'
+		},
+		proxy : {
+			type : "ajax",
+			url : getServerHttp() + "/cp/sms/template/list_data.htm",
+			reader : {
+				type : 'json',
+				root : 'list'
+			}
+		},
+		listeners : {
+			'beforeload' : function(store, op, options) {
+				/* var params = searchFormPanel.getForm().getValues(); */
+				Ext.apply(dataStore.proxy.extraParams);
+			}
+		}
+	}); //#dataStore
+
+	var listGridPanel = Ext.create('Ext.grid.Panel', {
+		title : '短信模板列表',
+		style : {marginBottom : '5px'},
+		tbar : [ {
+			text : '新增',
+			xtype : 'button',
+			icon : jcapp.getIcon("add.png"),
+			handler : function() {
+				myAdd();
+			}
+		} ],
+		dockedItems : [ {
+			store : dataStore, // same store GridPanel is using
+			dock : 'bottom',
+			displayInfo : true
+		} ],
+		store : dataStore,
+		columns : [ {
+			text : '模板编号',
+			dataIndex : 'smsTempCode',
+			flex : 1
+		}, {
+			text : '模板Id',
+			dataIndex : 'smsTempId',
+			flex : 1
+		}, {
+			xtype : "actioncolumn",
+			align : "center",
+			text : '操作',
+			items : [ {
+				xtype : "container"
+			}, {
+				xtype : 'button',
+				tooltip : '编辑',
+				icon : jcapp.getIcon("application_form_edit.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					myEdit(rec.get('kid'));
+				}
+			}, {
+				xtype : "container"
+			}, {
+				xtype : 'button',
+				tooltip : '删除',
+				icon : jcapp.getIcon("cross.png"),
+				handler : function(grid, rowIndex, colIndex) {
+					var rec = grid.getStore().getAt(rowIndex);
+					myDel(rec.get('kid'));
+				}
+			} ]
+
+		} ]
+	}); //#listGridPanel
+	Ext.onReady(function() { 
+	    add_panel.render(Ext.getBody());
+		listGridPanel.render(Ext.getBody());
+		test_panel.render(Ext.getBody());
+        setData(); 
+	});
+
+	function myDel(kid) {
+		Ext.Msg.confirm("提示:", "确定删除选定的记录?", function(e) {
+			if (e == "yes") {
+				Ext.Ajax.request({
+					url : getServerHttp() + "/cp/sms/template/del.htm?kid=" + kid,
+					success : function(response) {
+						var json = Ext.JSON.decode(response.responseText);
+						Ext.Msg.alert("提示", json.tip.msg);
+						dataStore.load();
+					},
+					failure : function(response) {
+						Ext.Msg.alert("提示", "操作失败!");
+					}
+				});
+			}//#if
+		});
+	}//#myDel
+
+	function setData() {
+		Ext.Ajax.request({
+			url : getServerHttp() + '/cp/sms/list_data.htm',
+			success : function(response) {
+				var json = Ext.JSON.decode(response.responseText);
+				add_panel.getForm().reset();
+				add_panel.getForm().setValues(json.list);
+			},
+			failure : function(response) {
+				Ext.Msg.alert("提示", "操作失败!");
+			}
+		}); 
+	}
+</script>
+
+<script type="text/javascript" src="add.js"></script>
+<script type="text/javascript" src="edit.js"></script>
+<script type="text/javascript" src="send.js"></script>
+</head>
+<body>
+
+</body>
+</html>
